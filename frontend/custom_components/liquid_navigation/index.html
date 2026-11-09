@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ALPHANEXUS Liquid Nav</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .liquid-nav-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      transition: all 0.25s ease;
+    }
+    .nav-btn:hover {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+    }
+    .nav-btn.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="liquid-nav-container" id="nav"></div>
+  <script>
+    function sendMessageToStreamlitClient(type, data) {
+      window.parent.postMessage({
+        isStreamlitMessage: true,
+        type: type,
+        ...data
+      }, "*");
+    }
+    function init() {
+      sendMessageToStreamlitClient("streamlit:componentReady", { apiVersion: 1 });
+      sendMessageToStreamlitClient("streamlit:setFrameHeight", { height: 50 });
+    }
+    window.addEventListener("message", (event) => {
+      if (event.data.type === "streamlit:render") {
+        const { items, active_item } = event.data.args;
+        const container = document.getElementById("nav");
+        container.innerHTML = "";
+        (items || []).forEach(item => {
+          const btn = document.createElement("button");
+          btn.className = "nav-btn" + (item.id === active_item ? " active" : "");
+          btn.textContent = (item.icon ? item.icon + " " : "") + item.title;
+          btn.onclick = () => {
+            sendMessageToStreamlitClient("streamlit:setComponentValue", { value: item.id });
+          };
+          container.appendChild(btn);
+        });
+      }
+    });
+    init();
+  </script>
+</body>
+</html>

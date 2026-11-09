@@ -1,0 +1,9 @@
+/* ALPHANEXUS – Dark Theme Palette */
+:root {
+  --color-bg-canvas: #0b0f19;
+  --color-bg-card: rgba(17, 24, 39, 0.70);
+  --color-text-main: #f9fafb;
+  --color-text-sub: #9ca3af;
+  --color-accent-blue: #3b82f6;
+  --color-border: rgba(255, 255, 255, 0.08);
+}

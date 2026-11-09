@@ -1,0 +1,9 @@
+/* ALPHANEXUS – Light Theme Palette */
+:root[data-theme="light"] {
+  --color-bg-canvas: #f8fafc;
+  --color-bg-card: rgba(255, 255, 255, 0.70);
+  --color-text-main: #0f172a;
+  --color-text-sub: #64748b;
+  --color-accent-blue: #2563eb;
+  --color-border: rgba(0, 0, 0, 0.08);
+}

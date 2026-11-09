@@ -1,0 +1,40 @@
+"""
+ALPHANEXUS – Frontend Config Package
+"""
+from .settings import (
+    BACKEND_BASE_URL,
+    API_V1_PREFIX,
+    BACKEND_API_URL,
+    APP_NAME,
+    APP_TAGLINE,
+    APP_VERSION,
+    BENCHMARK_INDICES,
+    ALLOWED_UPLOAD_EXTENSIONS,
+    MAX_UPLOAD_SIZE_MB,
+    DEFAULT_PAGE_ICON,
+    DEFAULT_PAGE_LAYOUT,
+    DEFAULT_EXPAND_SIDEBAR,
+)
+from .theme import LIGHT_THEME, DARK_THEME, CURRENT_THEME
+from .design_tokens import GLASS_TOKENS
+from .navigation import NAV_ITEMS
+
+__all__ = [
+    "BACKEND_BASE_URL",
+    "API_V1_PREFIX",
+    "BACKEND_API_URL",
+    "APP_NAME",
+    "APP_TAGLINE",
+    "APP_VERSION",
+    "BENCHMARK_INDICES",
+    "ALLOWED_UPLOAD_EXTENSIONS",
+    "MAX_UPLOAD_SIZE_MB",
+    "DEFAULT_PAGE_ICON",
+    "DEFAULT_PAGE_LAYOUT",
+    "DEFAULT_EXPAND_SIDEBAR",
+    "LIGHT_THEME",
+    "DARK_THEME",
+    "CURRENT_THEME",
+    "GLASS_TOKENS",
+    "NAV_ITEMS",
+]
