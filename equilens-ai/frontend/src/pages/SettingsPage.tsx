@@ -24,14 +24,20 @@ export const SettingsPage: React.FC = () => {
   const { theme, toggleTheme } = useThemeStore();
   const [engineSummary, setEngineSummary] = useState<EnginesSummary | null>(null);
   const [healthData, setHealthData] = useState<any>(null);
+  const [integrationsData, setIntegrationsData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchStatus = async () => {
     setIsLoading(true);
     try {
-      const [engines, health] = await Promise.all([api.getEngines(), api.getHealth()]);
+      const [engines, health, integrations] = await Promise.all([
+        api.getEngines(),
+        api.getHealth(),
+        api.getIntegrations().catch(() => null),
+      ]);
       setEngineSummary(engines);
       setHealthData(health);
+      setIntegrationsData(integrations);
     } catch (e) {
       console.error('Failed to load engines status:', e);
     } finally {
@@ -164,6 +170,98 @@ export const SettingsPage: React.FC = () => {
             </table>
           ) : (
             <div className="py-12 text-center text-xs text-slate-400">Loading engine registry...</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* External API Integration Audit Dashboard */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>External API Integrations & Connectivity Audit</CardTitle>
+            <p className="text-xs text-slate-500 mt-1">
+              Live status, response latency, and endpoint availability for all third-party services.
+            </p>
+          </div>
+          {integrationsData && (
+            <div className="flex items-center gap-2">
+              <Badge variant="gain" size="sm">
+                {integrationsData.connected_count} Connected
+              </Badge>
+              {integrationsData.degraded_count > 0 && (
+                <Badge variant="warning" size="sm">
+                  {integrationsData.degraded_count} Degraded / Tier Limit
+                </Badge>
+              )}
+            </div>
+          )}
+        </CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          {integrationsData ? (
+            <table className="w-full text-left text-xs font-tabular">
+              <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-mono">
+                <tr>
+                  <th className="p-4">Provider</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Model / Endpoint</th>
+                  <th className="p-4">Latency</th>
+                  <th className="p-4">HTTP</th>
+                  <th className="p-4">Operational Information</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {integrationsData.integrations.map((item: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-850/50">
+                    <td className="p-4 font-semibold text-slate-900 dark:text-slate-100 font-sans">
+                      {item.provider}
+                    </td>
+                    <td className="p-4">
+                      {item.status === 'Connected' ? (
+                        <Badge variant="gain" size="sm">
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Connected
+                        </Badge>
+                      ) : item.status === 'Degraded' ? (
+                        <Badge variant="warning" size="sm">
+                          <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Degraded
+                        </Badge>
+                      ) : item.status === 'Failed' ? (
+                        <Badge variant="loss" size="sm">
+                          <XCircle className="w-3.5 h-3.5 mr-1" /> Failed
+                        </Badge>
+                      ) : (
+                        <Badge variant="neutral" size="sm">
+                          <HelpCircle className="w-3.5 h-3.5 mr-1" /> Not Configured
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="p-4 font-mono text-cyan-500 text-[11px]">
+                      {item.model || '—'}
+                    </td>
+                    <td className="p-4 font-mono text-slate-700 dark:text-slate-300">
+                      {item.latency_ms > 0 ? `${item.latency_ms} ms` : '—'}
+                    </td>
+                    <td className="p-4 font-mono">
+                      {item.http_status ? (
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          item.http_status === 200 || item.http_status === 207
+                            ? 'bg-emerald-500/10 text-emerald-500'
+                            : 'bg-amber-500/10 text-amber-500'
+                        }`}>
+                          {item.http_status}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="p-4 text-slate-600 dark:text-slate-300 font-sans max-w-md">
+                      {item.information}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="py-8 text-center text-xs text-slate-400">Loading integrations audit...</div>
           )}
         </CardContent>
       </Card>

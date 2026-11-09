@@ -42,6 +42,10 @@ export const api = {
     const res = await apiClient.get('/health/engines');
     return res.data;
   },
+  getIntegrations: async () => {
+    const res = await apiClient.get('/health/integrations');
+    return res.data;
+  },
 
   // Companies
   getCompanies: async (params?: { exchange?: string; sector?: string; search?: string }): Promise<Company[]> => {

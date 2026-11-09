@@ -59,12 +59,29 @@ class GroqProvider(BaseLLMProvider):
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
-            completion = self._client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                temperature=0.2,
-                max_tokens=2048,
-            )
+            actual_model = self.model_name
+            try:
+                completion = self._client.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    temperature=0.2,
+                    max_tokens=2048,
+                )
+            except Exception as initial_err:
+                if "404" in str(initial_err) or "model_not_found" in str(initial_err).lower():
+                    logger.warning(
+                        f"Configured Groq model '{self.model_name}' unavailable ({initial_err}). "
+                        f"Attempting fallback to 'qwen/qwen3.8-27b'."
+                    )
+                    actual_model = "qwen/qwen3.8-27b"
+                    completion = self._client.chat.completions.create(
+                        model=actual_model,
+                        messages=messages,
+                        temperature=0.2,
+                        max_tokens=2048,
+                    )
+                else:
+                    raise initial_err
 
             text_content = completion.choices[0].message.content or ""
             tokens = completion.usage.total_tokens if completion.usage else 0
@@ -72,7 +89,7 @@ class GroqProvider(BaseLLMProvider):
             return LLMResponse(
                 content=text_content,
                 provider="Groq",
-                model=self.model_name,
+                model=actual_model,
                 tokens_used=tokens,
                 message_type="fact_grounded",
                 is_live=True,

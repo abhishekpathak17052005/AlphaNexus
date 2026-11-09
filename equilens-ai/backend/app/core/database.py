@@ -7,6 +7,34 @@ from .logging import logger
 
 Base = declarative_base()
 
+import urllib.parse
+
+def normalize_db_url(url: str) -> str:
+    """
+    Safely normalizes database URLs:
+    1. Converts `postgresql://` to `postgresql+psycopg2://` for SQLAlchemy 2.0 with psycopg2.
+    2. URL-encodes special characters (such as `@`) inside the password to prevent host misparsing.
+    """
+    if not url:
+        return ""
+    url = url.strip()
+    if "://" in url:
+        prefix, rest = url.split("://", 1)
+        if "@" in rest:
+            last_at = rest.rfind("@")
+            user_pass = rest[:last_at]
+            host_part = rest[last_at + 1 :]
+            if ":" in user_pass:
+                user, password = user_pass.split(":", 1)
+                if "@" in password:
+                    password = urllib.parse.quote_plus(password)
+                user_pass = f"{user}:{password}"
+            rest = f"{user_pass}@{host_part}"
+        if prefix == "postgresql":
+            prefix = "postgresql+psycopg2"
+        return f"{prefix}://{rest}"
+    return url
+
 # Determine database URL
 raw_db_url = (settings.DATABASE_URL or "").strip()
 
@@ -16,11 +44,7 @@ has_placeholder = any(
     for token in ["[YOUR-PASSWORD]", "[PASSWORD]", "<PASSWORD>", "YOUR-PASSWORD"]
 )
 
-# Normalize postgresql:// to postgresql+psycopg2:// for SQLAlchemy with psycopg2 driver
-if raw_db_url.startswith("postgresql://") and not raw_db_url.startswith("postgresql+psycopg2://"):
-    normalized_pg_url = raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-else:
-    normalized_pg_url = raw_db_url
+normalized_pg_url = normalize_db_url(raw_db_url)
 
 # Determine whether we can actually connect to PostgreSQL or should fall back to SQLite
 is_sqlite = False

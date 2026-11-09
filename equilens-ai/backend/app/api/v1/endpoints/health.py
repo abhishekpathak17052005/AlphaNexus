@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.core.database import get_db, check_database_health
 from app.core.registry import engine_registry
 from app.schemas.health import HealthResponse, EnginesSummaryResponse
+from app.services.audit_service import run_integrations_audit
 
 router = APIRouter()
 
@@ -31,4 +32,15 @@ def get_engines_health():
     (Database, pgvector, Embeddings, LLM, RAG, News, Analytics, Forecasting).
     """
     return engine_registry.get_summary()
+
+
+@router.get("/health/integrations")
+def get_integrations_audit():
+    """
+    Real-Time Administrative Integration Audit Dashboard.
+    Performs dynamic connectivity, authentication, and latency probes across all configured
+    external API providers (Gemini, Groq, PostgreSQL, pgvector, DhanHQ, Marketaux, FMP, Langfuse, Sentry).
+    Redacts all secrets, tokens, and authorization headers.
+    """
+    return run_integrations_audit()
 

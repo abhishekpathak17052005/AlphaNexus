@@ -76,10 +76,28 @@ class GeminiProvider(BaseLLMProvider):
             if system_prompt:
                 full_prompt = f"System Instruction: {system_prompt}\n\nUser Request: {prompt}"
 
-            response = self._client.generate_content(
-                full_prompt,
-                generation_config={"temperature": 0.2, "max_output_tokens": 2048},
-            )
+            try:
+                response = self._client.generate_content(
+                    full_prompt,
+                    generation_config={"temperature": 0.2, "max_output_tokens": 2048},
+                )
+                actual_model = self.model_name
+            except Exception as initial_err:
+                # If model is deprecated or not found (HTTP 404), try supported fallback model
+                if "404" in str(initial_err) or "not found" in str(initial_err).lower():
+                    logger.warning(
+                        f"Configured model '{self.model_name}' unavailable ({initial_err}). "
+                        f"Attempting fallback to 'gemini-3.5-flash'."
+                    )
+                    import google.generativeai as genai
+                    fallback_client = genai.GenerativeModel("gemini-3.5-flash")
+                    response = fallback_client.generate_content(
+                        full_prompt,
+                        generation_config={"temperature": 0.2, "max_output_tokens": 2048},
+                    )
+                    actual_model = "gemini-3.5-flash"
+                else:
+                    raise initial_err
 
             text_content = response.text if hasattr(response, "text") else ""
             # Estimate tokens if usage metadata is not directly available
@@ -92,7 +110,7 @@ class GeminiProvider(BaseLLMProvider):
             return LLMResponse(
                 content=text_content,
                 provider="Google Gemini",
-                model=self.model_name,
+                model=actual_model,
                 tokens_used=tokens,
                 message_type="fact_grounded",
                 is_live=True,

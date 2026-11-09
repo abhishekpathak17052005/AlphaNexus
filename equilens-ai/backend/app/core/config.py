@@ -67,7 +67,13 @@ class Settings(BaseSettings):
     LANGFUSE_PUBLIC_KEY: Optional[str] = None
     LANGFUSE_SECRET_KEY: Optional[str] = None
     LANGFUSE_HOST: str = "https://cloud.langfuse.com"
+    LANGFUSE_BASE_URL: Optional[str] = None
     SENTRY_DSN: Optional[str] = None
+
+    @property
+    def effective_langfuse_host(self) -> str:
+        raw = self.LANGFUSE_BASE_URL or self.LANGFUSE_HOST or "https://cloud.langfuse.com"
+        return raw.strip('"\'').rstrip('/')
 
     # Security
     SECRET_KEY: str = "equilens_ai_default_jwt_secret_key_change_in_production"
