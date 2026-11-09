@@ -2,7 +2,7 @@ from .service import RAGService, rag_service
 from .embeddings import EmbeddingEngine, embedding_engine
 from .vector_store import VectorStore, vector_store
 from .citations import CitationEngine
-from .chunker import DocumentChunker
+from .chunking import FinancialDocumentChunker as DocumentChunker
 from .preprocessor import DocumentPreprocessor
 
 __all__ = [

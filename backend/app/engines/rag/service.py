@@ -31,7 +31,7 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.engines.providers.gemini import GeminiProvider
 from app.engines.providers.groq import GroqProvider
-from app.engines.rag.chunker import FinancialDocumentChunker
+from app.engines.rag.chunking import FinancialDocumentChunker
 from app.engines.rag.citations import CitationEngine
 from app.engines.rag.classifier import document_classifier
 from app.engines.rag.embeddings import embedding_engine
@@ -41,7 +41,7 @@ from app.engines.rag.loaders.tabular_loader import TabularDocumentLoader
 from app.engines.rag.loaders.langchain_loader import LangChainDocumentLoader
 from app.engines.rag.preprocessor import DocumentPreprocessor
 from app.engines.rag.query_router import query_router, QueryRoute
-from app.engines.rag.reranker import get_reranker
+from app.engines.rag.rerankers import get_reranker
 from app.engines.rag.vector_store import vector_store
 from app.database.mongodb import mongodb_manager
 from app.models.company import Company
