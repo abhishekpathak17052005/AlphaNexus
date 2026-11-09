@@ -10,6 +10,7 @@ from .forecast import Forecast, ForecastEvaluation
 from .research import ResearchSession, ResearchMessage, Citation
 from .watchlist import Watchlist
 from .engine_status import EngineStatusLog
+from .rag_config import RAGConfiguration
 
 __all__ = [
     "Base",

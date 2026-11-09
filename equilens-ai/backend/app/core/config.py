@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
     SUPABASE_STORAGE_BUCKET: str = "equilens-documents"
 
+    # MongoDB Atlas Vector Search
+    MONGODB_URI: Optional[str] = None
+    MONGODB_DB: str = "equilens_rag"
+
     # AI & LLM Providers
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-1.5-flash"
@@ -49,9 +53,20 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     # Embedding Model
-    EMBEDDING_MODEL_NAME: str = "BAAI/bge-small-en-v1.5"
-    EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_MODEL_NAME: str = "BAAI/bge-base-en-v1.5"
+    EMBEDDING_DIMENSION: int = 768
     EMBEDDING_DEVICE: str = "cpu"
+    EMBEDDING_BATCH_SIZE: int = 32
+    EMBEDDING_MAX_SEQ_LENGTH: int = 512
+
+    # RAG Pipeline defaults
+    RAG_CHUNK_SIZE: int = 600
+    RAG_CHUNK_OVERLAP: int = 100
+    RAG_RETRIEVAL_TOP_K: int = 8
+    RAG_HYBRID_ENABLED: bool = True
+    RAG_RERANKING_ENABLED: bool = False
+    RAG_VECTOR_WEIGHT: float = 0.6
+    RAG_KEYWORD_WEIGHT: float = 0.4
 
     # Market Data Providers (Indian Equities - NSE/BSE)
     DHAN_CLIENT_ID: Optional[str] = None
