@@ -8,32 +8,57 @@ from .logging import logger
 Base = declarative_base()
 
 # Determine database URL
-raw_db_url = settings.DATABASE_URL or ""
+raw_db_url = (settings.DATABASE_URL or "").strip()
 
-# Use SQLite for offline demo mode if no PostgreSQL connection is provided
-# to ensure local functionality without Docker
-is_sqlite = False
-if not raw_db_url or "localhost:5432" in raw_db_url and not os.environ.get("POSTGRES_ACTIVE"):
-    # Check if a postgres server is actually reachable
-    try:
-        if raw_db_url:
-            test_engine = create_engine(raw_db_url, connect_args={"connect_timeout": 2})
-            with test_engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            db_url = raw_db_url
-        else:
-            raise ConnectionError("No DATABASE_URL configured")
-    except Exception:
-        # Fall back to SQLite file for robust local development without Docker
-        sqlite_path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "../../../database/equilens_dev.db")
-        )
-        os.makedirs(os.path.dirname(sqlite_path), exist_ok=True)
-        db_url = f"sqlite:///{sqlite_path}"
-        is_sqlite = True
-        logger.info(f"Using local SQLite database for development fallback: {db_url}")
+# Check for placeholder credentials in the configured URL
+has_placeholder = any(
+    token in raw_db_url
+    for token in ["[YOUR-PASSWORD]", "[PASSWORD]", "<PASSWORD>", "YOUR-PASSWORD"]
+)
+
+# Normalize postgresql:// to postgresql+psycopg2:// for SQLAlchemy with psycopg2 driver
+if raw_db_url.startswith("postgresql://") and not raw_db_url.startswith("postgresql+psycopg2://"):
+    normalized_pg_url = raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 else:
-    db_url = raw_db_url
+    normalized_pg_url = raw_db_url
+
+# Determine whether we can actually connect to PostgreSQL or should fall back to SQLite
+is_sqlite = False
+db_url = ""
+
+if not raw_db_url or has_placeholder:
+    is_sqlite = True
+    if has_placeholder:
+        logger.warning(
+            "DATABASE_URL contains placeholder password '[YOUR-PASSWORD]'. "
+            "Falling back to local SQLite development database."
+        )
+else:
+    # Test connection to the configured PostgreSQL instance
+    try:
+        test_engine = create_engine(
+            normalized_pg_url,
+            connect_args={"connect_timeout": 3},
+            pool_pre_ping=True,
+        )
+        with test_engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_url = normalized_pg_url
+        logger.info(f"Connected successfully to PostgreSQL database.")
+    except Exception as exc:
+        is_sqlite = True
+        logger.warning(
+            f"Could not connect to configured PostgreSQL database ({exc}). "
+            f"Falling back to local SQLite database."
+        )
+
+if is_sqlite:
+    sqlite_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../database/equilens_dev.db")
+    )
+    os.makedirs(os.path.dirname(sqlite_path), exist_ok=True)
+    db_url = f"sqlite:///{sqlite_path}"
+    logger.info(f"Using local SQLite database for development fallback: {db_url}")
 
 # Configure engine
 if is_sqlite:
