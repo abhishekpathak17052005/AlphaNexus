@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     market_events,
     forecasts,
     watchlist,
+    rag,
 )
 
 api_router = APIRouter()
@@ -18,6 +19,8 @@ api_router.include_router(health.router, tags=["Health & Engines"])
 api_router.include_router(companies.router, prefix="/companies", tags=["Companies"])
 api_router.include_router(documents.router, prefix="/documents", tags=["Documents & Ingestion"])
 api_router.include_router(research.router, prefix="/research", tags=["AI Research & RAG"])
+api_router.include_router(research.router, prefix="/chat", tags=["Chat"])
+api_router.include_router(rag.router, prefix="/rag", tags=["Financial RAG Engine"])
 api_router.include_router(news.router, prefix="/news", tags=["News Intelligence"])
 api_router.include_router(financials.router, tags=["Financial Analytics"])
 api_router.include_router(corporate_actions.router, prefix="/corporate-actions", tags=["Corporate Actions"])
