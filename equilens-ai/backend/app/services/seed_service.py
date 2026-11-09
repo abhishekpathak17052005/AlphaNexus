@@ -17,11 +17,7 @@ def seed_initial_market_data(db: Session):
     Seeds comprehensive high-fidelity Indian equity market data (NSE + BSE)
     with genuine historical financial metrics, announcements, deals, and filings.
     """
-    existing_companies = db.query(Company).count()
-    if existing_companies > 0:
-        return
-
-    logger.info("Seeding Indian Equities master records (NSE/BSE)...")
+    logger.info("Checking Indian Equities master records (NSE/BSE)...")
 
     companies_seed = [
         {
@@ -269,6 +265,40 @@ def seed_initial_market_data(db: Session):
             },
         },
     ]
+
+    existing_companies = db.query(Company).count()
+    if existing_companies > 0:
+        if db.query(DocumentChunk).count() == 0:
+            logger.info("Seeding missing document chunks for RAG...")
+            for c_data in companies_seed:
+                comp = db.query(Company).filter(Company.symbol == c_data["symbol"]).first()
+                if not comp:
+                    continue
+                doc_info = c_data["document"]
+                doc = db.query(Document).filter(Document.company_id == comp.id, Document.title == doc_info["title"]).first()
+                if doc:
+                    for idx, chunk_item in enumerate(doc_info["chunks"]):
+                        full_content = (
+                            f"[{comp.symbol} | {doc.financial_year} | {doc.document_type} | Page {chunk_item['page']} - {chunk_item['section']}]\n\n"
+                            f"{chunk_item['text']}"
+                        )
+                        emb = embedding_engine.get_embedding(full_content)
+                        chunk = DocumentChunk(
+                            document_id=doc.id,
+                            company_id=comp.id,
+                            chunk_index=idx,
+                            content=full_content,
+                            clean_text=chunk_item["text"],
+                            section=chunk_item["section"],
+                            page_number=chunk_item["page"],
+                            token_count=len(full_content.split()),
+                            embedding=emb,
+                            metadata_json={"company_symbol": comp.symbol, "page": chunk_item["page"]},
+                        )
+                        db.add(chunk)
+            db.commit()
+            logger.info("Missing document chunks seeded successfully.")
+        return
 
     for c_data in companies_seed:
         company = Company(
