@@ -1,0 +1,5 @@
+retrieval:
+  dense_weight: 0.70
+  sparse_weight: 0.30
+  similarity_metric: cosine
+  max_tokens_context: 3500

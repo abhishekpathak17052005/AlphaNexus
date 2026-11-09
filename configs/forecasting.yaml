@@ -1,0 +1,8 @@
+forecasting:
+  default_periods: 4
+  confidence_interval: 0.95
+  monte_carlo_simulations: 1000
+  scenarios:
+    - base
+    - bull
+    - bear
