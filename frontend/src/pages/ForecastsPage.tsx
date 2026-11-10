@@ -1,241 +1,172 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, RefreshCw, AlertTriangle, ShieldCheck, CheckCircle2, BarChart2 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { ForecastScenarioChart } from '../components/charts/ForecastScenarioChart';
+import { motion } from 'motion/react';
+import { TrendingUp, AlertTriangle } from 'lucide-react';
+import {
+  ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine, Legend,
+} from 'recharts';
+import { ANButton } from '../components/shared/ANButton';
 import { api } from '../services/api';
-import { Company, ForecastResponseData } from '../types';
+import type { Company, ForecastResponseData } from '../types';
+
+const METRICS = ['revenue', 'net_profit', 'ebitda', 'eps'];
 
 export const ForecastsPage: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  const [selectedMetric, setSelectedMetric] = useState<string>('revenue');
-  const [forecastData, setForecastData] = useState<ForecastResponseData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [selected,  setSelected]  = useState('');
+  const [metric,    setMetric]    = useState('revenue');
+  const [forecast,  setForecast]  = useState<ForecastResponseData | null>(null);
+  const [loading,   setLoading]   = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const comps = await api.getCompanies();
-        setCompanies(comps);
-        if (comps.length > 0) {
-          setSelectedCompanyId(comps[0].id);
-        }
-      } catch (e) {
-        console.error('Error loading companies:', e);
-      }
-    };
-    fetchCompanies();
+    api.getCompanies().then((d) => {
+      setCompanies(d);
+      if (d.length) setSelected(d[0].id);
+    });
   }, []);
 
-  const loadForecast = async (compId: string, metric: string) => {
-    if (!compId) return;
-    setIsLoading(true);
-    try {
-      const data = await api.getForecasts(compId, metric);
-      setForecastData(data);
-    } catch (e) {
-      console.error('Error fetching forecast:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (selectedCompanyId) {
-      loadForecast(selectedCompanyId, selectedMetric);
-    }
-  }, [selectedCompanyId, selectedMetric]);
+    if (!selected) return;
+    setLoading(true);
+    api.getForecasts(selected, metric).then(setForecast).catch(() => setForecast(null)).finally(() => setLoading(false));
+  }, [selected, metric]);
 
-  const handleRegenerate = async () => {
-    if (!selectedCompanyId) return;
-    setIsLoading(true);
+  const generate = async () => {
+    if (!selected) return;
+    setGenerating(true);
     try {
-      const data = await api.generateForecast(selectedCompanyId, {
-        metric_name: selectedMetric,
-        forecast_horizon_years: 3,
-      });
-      setForecastData(data);
-    } catch (e) {
-      console.error('Error generating forecast:', e);
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await api.generateForecast(selected, { metric_name: metric, forecast_horizon_years: 3 });
+      setForecast(res);
+    } finally { setGenerating(false); }
   };
 
-  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
+  // Build chart data combining historical + forecasts
+  const chartData = [
+    ...(forecast?.historical ?? []).map((h) => ({
+      period: h.period, actual: h.value, base: null, bullish: null, bearish: null,
+    })),
+    ...(forecast?.forecasts ?? []).map((f) => ({
+      period: f.period, actual: null, base: f.base, bullish: f.bullish, bearish: f.bearish,
+    })),
+  ];
+
+  const selectedCompany = companies.find((c) => c.id === selected);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Performance Forecasting Engine
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Statistical multi-scenario projection with confidence intervals & walk-forward validation
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={handleRegenerate} isLoading={isLoading}>
-            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Re-estimate Models
-          </Button>
-        </div>
+    <div className="page-container py-8 space-y-7">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-1)', letterSpacing: '-0.02em' }}>
+          Performance <span style={{ color: 'var(--brand)' }}>Forecasts</span>
+        </h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-3)' }}>
+          Statistical scenario modeling based on verified historical financials.
+        </p>
+      </motion.div>
+
+      {/* Disclaimer */}
+      <div className="flex items-start gap-3 p-4 rounded-xl"
+        style={{ background: 'rgba(251,191,36,.06)', border: '1px solid rgba(251,191,36,.2)' }}>
+        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--warning)' }} />
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--text-2)' }}>
+          <strong style={{ color: 'var(--warning)' }}>Important:</strong>{' '}
+          Forecasts are statistical estimates based on historical filings only. They are not investment advice
+          and do not constitute a guarantee of future performance. All scenarios are illustrative.
+        </p>
       </div>
 
-      {/* Control Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Company Selector */}
-        <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Company Target
-          </label>
-          <select
-            value={selectedCompanyId}
-            onChange={(e) => setSelectedCompanyId(e.target.value)}
-            className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs px-3 py-2 text-slate-800 dark:text-slate-200 font-mono focus:outline-none"
-          >
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.symbol} - {c.name}
-              </option>
-            ))}
-          </select>
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <select value={selected} onChange={(e) => setSelected(e.target.value)} className="input px-3 py-2 text-sm">
+          {companies.map((c) => <option key={c.id} value={c.id}>{c.symbol} — {c.name}</option>)}
+        </select>
+        <div className="flex gap-1.5">
+          {METRICS.map((m) => (
+            <button
+              key={m}
+              onClick={() => setMetric(m)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize"
+              style={{
+                background: metric === m ? 'var(--brand)' : 'var(--surface-2)',
+                color: metric === m ? '#fff' : 'var(--text-3)',
+                border: `1px solid ${metric === m ? 'var(--brand)' : 'var(--border)'}`,
+              }}
+            >
+              {m.replace('_', ' ')}
+            </button>
+          ))}
         </div>
-
-        {/* Metric Selector */}
-        <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Financial Target Variable
-          </label>
-          <select
-            value={selectedMetric}
-            onChange={(e) => setSelectedMetric(e.target.value)}
-            className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs px-3 py-2 text-slate-800 dark:text-slate-200 focus:outline-none"
-          >
-            <option value="revenue">Total Revenue (₹ Cr)</option>
-            <option value="ebitda">EBITDA (₹ Cr)</option>
-            <option value="net_profit">Net Profit (PAT) (₹ Cr)</option>
-            <option value="eps">Earnings Per Share (EPS ₹)</option>
-          </select>
-        </div>
-
-        {/* Model Type */}
-        <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Statistical Model
-          </label>
-          <div className="rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs px-3 py-2 text-slate-700 dark:text-slate-300 font-mono">
-            Trend + Autoregressive (v1.0)
-          </div>
-        </div>
-
-        {/* Evaluation status */}
-        <div>
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Cross-Validation Status
-          </label>
-          <div className="flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs px-3 py-2 text-emerald-500 font-semibold font-mono">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Walk-Forward Verified
-          </div>
-        </div>
+        <ANButton variant="ghost" size="sm" loading={generating} onClick={generate}>
+          Generate Forecast
+        </ANButton>
       </div>
 
-      {/* Main Chart Card */}
-      {forecastData && (
-        <Card className="p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-            <div>
-              <CardTitle>
-                {selectedCompany?.name} ({selectedCompany?.symbol}) – {selectedMetric.toUpperCase()} Forecast
-              </CardTitle>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Multi-year projection spanning FY25 – FY27 with historical anchor points
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="brand" size="xs">
-                CONFIDENCE INTERVAL: 95%
-              </Badge>
-            </div>
-          </div>
-
-          <ForecastScenarioChart
-            historicalData={forecastData.historical}
-            forecastData={forecastData.forecasts}
-            metricLabel={selectedMetric.toUpperCase()}
-            unit={selectedMetric === 'eps' ? '₹' : '₹ Cr'}
-          />
-
-          {/* Scenario Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-            {forecastData.forecasts.map((f) => (
-              <Card key={f.period} className="p-4 bg-slate-50 dark:bg-slate-900/50">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="font-bold text-sm text-cyan-500 font-mono">{f.period} Projection</span>
-                  <span className="text-[10px] text-slate-400 font-mono">Parametric Bands</span>
-                </div>
-                <div className="space-y-2 text-xs font-tabular">
-                  <div className="flex justify-between">
-                    <span className="text-emerald-500 font-semibold">Bullish Scenario (+15%):</span>
-                    <span className="font-bold">₹{f.bullish.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-cyan-500 font-semibold">Base Case Scenario:</span>
-                    <span className="font-bold">₹{f.base.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-rose-500 font-semibold">Bearish Scenario (-15%):</span>
-                    <span className="font-bold">₹{f.bearish.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-400">
-                    95% Interval: ₹{f.confidence_intervals.ci_95.lower.toLocaleString('en-IN')} – ₹{f.confidence_intervals.ci_95.upper.toLocaleString('en-IN')}
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          {/* Model Performance Backtesting Metrics */}
-          {forecastData.evaluation && (
-            <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2 font-tabular">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block font-mono">
-                Model Evaluation & Historical Accuracy
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div>
-                  <span className="text-slate-400 block">Mean Absolute Error (MAE):</span>
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{forecastData.evaluation.mae}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Root Mean Squared Error:</span>
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{forecastData.evaluation.rmse}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Mean Absolute % Error (MAPE):</span>
-                  <span className="font-semibold text-emerald-500">{forecastData.evaluation.mape}%</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Directional Accuracy:</span>
-                  <span className="font-semibold text-emerald-500">{forecastData.evaluation.directional_accuracy}%</span>
-                </div>
-              </div>
-            </div>
+      {/* Chart */}
+      <div className="card p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold" style={{ color: 'var(--text-1)' }}>
+            {selectedCompany?.symbol} · {metric.replace('_', ' ').toUpperCase()} Forecast
+          </h3>
+          {forecast?.forecasts?.length === 0 && (
+            <span className="badge badge-muted">No forecast data — click Generate</span>
           )}
+        </div>
 
-          {/* Notice & Disclaimer */}
-          <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-            <div>
-              <span className="font-semibold block mb-0.5">Statistical Estimation Notice:</span>
-              <p className="leading-relaxed">{forecastData.disclaimer}</p>
-            </div>
+        {loading ? (
+          <div className="skeleton h-64 rounded-xl" />
+        ) : chartData.length === 0 ? (
+          <div className="h-64 flex items-center justify-center text-sm" style={{ color: 'var(--text-4)' }}>
+            Click "Generate Forecast" to run the statistical model.
           </div>
-        </Card>
+        ) : (
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <defs>
+                <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#1558C9" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#1558C9" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 6" stroke="var(--border)" />
+              <XAxis dataKey="period" tick={{ fill: 'var(--text-4)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--text-4)', fontSize: 10 }} axisLine={false} tickLine={false} width={65}
+                tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} />
+              <Tooltip contentStyle={{ background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 11 }} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+              {/* Actual */}
+              <Area type="monotone" dataKey="actual" stroke="#1558C9" strokeWidth={2.5}
+                fill="url(#actualGrad)" dot={{ fill: '#1558C9', r: 4 }} name="Actual" connectNulls />
+              {/* Forecast scenarios */}
+              <Bar dataKey="bullish" fill="rgba(212,255,36,0.5)" radius={[4,4,0,0]} name="Bullish" />
+              <Bar dataKey="base"    fill="rgba(21,88,201,0.6)"  radius={[4,4,0,0]} name="Base" />
+              <Bar dataKey="bearish" fill="rgba(255,100,110,0.4)" radius={[4,4,0,0]} name="Bearish" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
+
+        {forecast?.disclaimer && (
+          <div className="text-[10px] text-center" style={{ color: 'var(--text-4)' }}>
+            {forecast.disclaimer}
+          </div>
+        )}
+      </div>
+
+      {/* Evaluation metrics */}
+      {forecast?.evaluation && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: 'MAE',  value: forecast.evaluation.mae?.toFixed(2) ?? '—' },
+            { label: 'RMSE', value: forecast.evaluation.rmse?.toFixed(2) ?? '—' },
+            { label: 'MAPE', value: forecast.evaluation.mape != null ? `${forecast.evaluation.mape.toFixed(1)}%` : '—' },
+            { label: 'Directional', value: forecast.evaluation.directional_accuracy != null ? `${(forecast.evaluation.directional_accuracy*100).toFixed(0)}%` : '—' },
+          ].map((m) => (
+            <div key={m.label} className="card p-4 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-4)' }}>{m.label}</div>
+              <div className="text-lg font-black font-tabular" style={{ color: 'var(--text-1)' }}>{m.value}</div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
 };
-

@@ -1,315 +1,273 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
-  Bot,
-  Send,
-  Plus,
-  Bookmark,
-  Share2,
-  Copy,
-  Check,
-  Building2,
-  FileText,
-  Clock,
-  Sparkles,
-  ExternalLink,
+  Bot, Send, Plus, Copy, Check, Sparkles, FileText,
+  ChevronRight, Loader2, Building2,
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
+import { ANButton } from '../components/shared/ANButton';
 import { api } from '../services/api';
-import { Company, ResearchMessage, ResearchSession } from '../types';
+import type { Company, ResearchMessage, ResearchSession, CitationItem } from '../types';
+
+const SAMPLE_PROMPTS = [
+  'What are Reliance Industries key capex initiatives in green energy for FY24?',
+  'Analyze TCS operating margins and subcontractor expenses in FY24',
+  'Summarize HDFC Bank asset quality and Gross NPA trends post-merger',
+  'What is L&T consolidated order book as of FY24?',
+];
 
 export const AIResearchPage: React.FC = () => {
-  const [sessions, setSessions] = useState<ResearchSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ResearchMessage[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  const [query, setQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sessions,   setSessions]   = useState<ResearchSession[]>([]);
+  const [sessionId,  setSessionId]  = useState<string | null>(null);
+  const [messages,   setMessages]   = useState<ResearchMessage[]>([]);
+  const [companies,  setCompanies]  = useState<Company[]>([]);
+  const [companyId,  setCompanyId]  = useState('');
+  const [query,      setQuery]      = useState('');
+  const [loading,    setLoading]    = useState(false);
+  const [copied,     setCopied]     = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const [sessList, comps] = await Promise.all([
-          api.getResearchSessions(),
-          api.getCompanies(),
-        ]);
-        setSessions(sessList);
-        setCompanies(comps);
-        if (comps.length > 0) setSelectedCompanyId(comps[0].id);
-
-        if (sessList.length > 0) {
-          setCurrentSessionId(sessList[0].id);
-          const fullSession = await api.getResearchSession(sessList[0].id);
-          setMessages(fullSession.messages);
-        }
-      } catch (e) {
-        console.error('Error initializing AI Research:', e);
-      }
-    };
-    init();
+    Promise.all([api.getResearchSessions(), api.getCompanies()]).then(([sess, comps]) => {
+      setSessions(sess);
+      setCompanies(comps);
+      if (comps.length) setCompanyId(comps[0].id);
+    });
   }, []);
 
-  const handleSelectSession = async (sessId: string) => {
-    setCurrentSessionId(sessId);
-    try {
-      const full = await api.getResearchSession(sessId);
-      setMessages(full.messages);
-    } catch (e) {
-      console.error('Failed to load session:', e);
-    }
-  };
-
-  const handleNewSession = () => {
-    setCurrentSessionId(null);
-    setMessages([]);
-  };
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
   const handleSend = async () => {
-    if (!query.trim()) return;
-    const userMsg: any = {
+    if (!query.trim() || loading) return;
+    const q = query;
+    setQuery('');
+    setLoading(true);
+
+    const userMsg: ResearchMessage = {
       id: Date.now().toString(),
-      session_id: currentSessionId || '',
+      session_id: sessionId || '',
       role: 'user',
-      content: query,
+      content: q,
       message_type: 'user_query',
       tokens_used: 0,
       citations: [],
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, userMsg]);
-    const q = query;
-    setQuery('');
-    setIsLoading(true);
 
     try {
       const res = await api.sendResearchChat({
-        session_id: currentSessionId || undefined,
-        company_id: selectedCompanyId || undefined,
+        session_id: sessionId || undefined,
+        company_id: companyId || undefined,
         query: q,
       });
-
       setMessages((prev) => [...prev, res]);
-      if (!currentSessionId && res.session_id) {
-        setCurrentSessionId(res.session_id);
-        const updatedSessions = await api.getResearchSessions();
-        setSessions(updatedSessions);
+      if (!sessionId) {
+        setSessionId(res.session_id);
+        const updated = await api.getResearchSessions();
+        setSessions(updated);
       }
-    } catch (e: any) {
-      console.error('Research error:', e);
+    } catch (e) {
+      setMessages((prev) => [...prev, {
+        id: Date.now().toString() + '-err',
+        session_id: '',
+        role: 'assistant',
+        content: '⚠️ Request failed. Please check the backend connection.',
+        message_type: 'synthesis',
+        tokens_used: 0,
+        citations: [],
+        created_at: new Date().toISOString(),
+      }]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const copyToClipboard = (text: string, id: string) => {
+  const copy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
   };
 
+  const startNew = () => { setSessionId(null); setMessages([]); };
+
   return (
-    <div className="h-[calc(100vh-6.5rem)] flex gap-4 overflow-hidden">
-      {/* Session History Sidebar */}
-      <div className="hidden md:flex flex-col w-64 bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-slate-800 rounded-xl p-3 shrink-0">
-        <Button variant="primary" size="sm" className="w-full mb-3" onClick={handleNewSession}>
-          <Plus className="w-4 h-4 mr-1.5" /> New Research Query
-        </Button>
-        <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider px-2 py-1">
-          Recent Sessions
+    <div className="h-[calc(100vh-100px)] flex gap-4 page-container py-4">
+      {/* Sidebar */}
+      <aside className="hidden md:flex flex-col w-56 shrink-0 rounded-2xl overflow-hidden"
+        style={{ background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
+        <div className="p-3" style={{ borderBottom: '1px solid var(--border)' }}>
+          <ANButton variant="brand" size="sm" className="w-full" icon={<Plus className="w-3.5 h-3.5" />} onClick={startNew}>
+            New Session
+          </ANButton>
         </div>
-        <div className="flex-1 overflow-y-auto space-y-1">
+        <div className="p-2 text-[10px] font-bold uppercase tracking-wider px-3 py-2" style={{ color: 'var(--text-4)' }}>
+          Recent
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-0.5 px-1.5 pb-2">
           {sessions.map((s) => (
             <button
               key={s.id}
-              onClick={() => handleSelectSession(s.id)}
-              className={`w-full text-left p-2.5 rounded-lg text-xs transition-colors flex flex-col gap-0.5 ${
-                currentSessionId === s.id
-                  ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold border border-cyan-500/30'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-850'
-              }`}
+              onClick={async () => {
+                setSessionId(s.id);
+                const full = await api.getResearchSession(s.id);
+                setMessages(full.messages);
+              }}
+              className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-medium transition-colors"
+              style={{
+                background: sessionId === s.id ? 'var(--brand-muted)' : 'transparent',
+                color: sessionId === s.id ? 'var(--brand)' : 'var(--text-2)',
+              }}
             >
-              <span className="truncate">{s.title || 'Equity Inquiry'}</span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {new Date(s.created_at).toLocaleDateString()}
-              </span>
+              <div className="truncate">{s.title || 'Research Session'}</div>
             </button>
           ))}
         </div>
-      </div>
+      </aside>
 
-      {/* Main Chat Workspace */}
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        {/* Session Header / Controls */}
-        <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/30">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center">
-              <Bot className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Evidence-Grounded Equity Analyst
-              </h2>
-              <p className="text-[11px] text-slate-400">
-                Dual pipeline: BAAI/bge-small-en-v1.5 pgvector search + Gemini 1.5 synthesis
-              </p>
+      {/* Main chat */}
+      <div className="flex-1 flex flex-col rounded-2xl overflow-hidden"
+        style={{ background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
+        {/* Header */}
+        <div className="flex flex-wrap items-center gap-3 p-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'var(--brand-muted)', border: '1px solid var(--border-brand)' }}>
+            <Bot className="w-4 h-4" style={{ color: 'var(--brand)' }} />
+          </div>
+          <div>
+            <div className="text-sm font-bold" style={{ color: 'var(--text-1)' }}>AlphaNexus Intelligence Agent</div>
+            <div className="text-[10px]" style={{ color: 'var(--text-4)' }}>
+              bge-base-en-v1.5 · pgvector ANN · Gemini synthesis
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <select
-              value={selectedCompanyId}
-              onChange={(e) => setSelectedCompanyId(e.target.value)}
-              className="rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs px-2.5 py-1.5 text-slate-800 dark:text-slate-200 font-mono focus:outline-none"
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
+              className="input text-xs px-2.5 py-1.5"
             >
-              <option value="">All Tracked Companies</option>
+              <option value="">All Companies</option>
               {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.symbol} - {c.name}
-                </option>
+                <option key={c.id} value={c.id}>{c.symbol} — {c.name}</option>
               ))}
             </select>
-            <Badge variant="gain" size="xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" /> RAG ACTIVE
-            </Badge>
+            <span className="badge badge-lime">RAG ACTIVE</span>
           </div>
         </div>
 
-        {/* Messages Feed */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4 max-w-md mx-auto">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 flex items-center justify-center">
-                <Sparkles className="w-6 h-6" />
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-5 py-16">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                style={{ background: 'var(--brand-muted)', border: '1px solid var(--border-brand)' }}>
+                <Sparkles className="w-6 h-6" style={{ color: 'var(--brand)' }} />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                  Ask Anything Across Company Filings
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Query balance sheet footnotes, capex plans, segment EBITDA, or major contract wins.
-                  Every answer provides verbatim citations.
-                </p>
+                <div className="font-bold text-lg" style={{ color: 'var(--text-1)' }}>Ask anything about company filings</div>
+                <div className="text-sm mt-1" style={{ color: 'var(--text-3)' }}>
+                  Every answer is grounded in verified corporate documents with page-level citations.
+                </div>
               </div>
-
-              <div className="w-full space-y-2 text-left text-xs pt-2">
-                {[
-                  'What are Reliance Industries key capex initiatives in green energy for FY24?',
-                  'Analyze TCS operating margins and subcontractor expenses in FY24',
-                  'Summarize HDFC Bank asset quality and Gross NPA trends',
-                ].map((sample, i) => (
+              <div className="grid sm:grid-cols-2 gap-2 w-full max-w-lg text-left">
+                {SAMPLE_PROMPTS.map((p) => (
                   <button
-                    key={i}
-                    onClick={() => setQuery(sample)}
-                    className="w-full p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/60 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
+                    key={p}
+                    onClick={() => setQuery(p)}
+                    className="p-3 rounded-xl text-xs font-medium text-left transition-colors"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)' }}
                   >
-                    "{sample}"
+                    "{p}"
                   </button>
                 ))}
               </div>
             </div>
-          ) : (
-            messages.map((m) => (
-              <div
-                key={m.id}
-                className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-xl p-4 sm:p-5 text-xs sm:text-sm space-y-3 ${
-                    m.role === 'user'
-                      ? 'bg-cyan-600 text-white font-medium'
-                      : 'bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
-                  }`}
-                >
-                  {m.role === 'assistant' && (
-                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                      <div className="flex items-center gap-2">
-                        <Bot className="w-4 h-4 text-cyan-500" />
-                        <span className="font-semibold text-xs text-cyan-500 font-mono">
-                          EquiLens Intelligence Agent
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="gain" size="xs">
-                          {m.message_type === 'fact_grounded' ? 'Fact Grounded' : 'Synthesis'}
-                        </Badge>
-                        <button
-                          onClick={() => copyToClipboard(m.content, m.id)}
-                          className="text-slate-400 hover:text-slate-200"
-                          title="Copy response"
-                        >
-                          {copiedId === m.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
-
-                  {/* Citations Box */}
-                  {m.citations && m.citations.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center justify-between">
-                        <span>Grounded Document Sources ({m.citations.length})</span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        {m.citations.map((c, cIdx) => (
-                          <div
-                            key={cIdx}
-                            className="p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs"
-                          >
-                            <div className="flex items-center justify-between text-cyan-500 font-semibold mb-1">
-                              <span>
-                                [{cIdx + 1}] {c.document_title || 'Annual Report'} • Page {c.page_number || 'N/A'}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                Match: {(c.confidence_score * 100).toFixed(0)}%
-                              </span>
-                            </div>
-                            <p className="text-slate-500 dark:text-slate-400 italic">
-                              "{c.excerpt}"
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
           )}
-          {isLoading && (
-            <div className="flex items-center gap-2.5 text-xs text-cyan-500 font-mono animate-pulse p-3 bg-slate-50 dark:bg-slate-900/40 rounded-lg max-w-sm">
-              <Bot className="w-4 h-4 animate-spin" />
-              Executing pgvector search & generating citations...
+
+          {messages.map((m) => (
+            <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div
+                className="max-w-[85%] rounded-2xl p-4 text-sm space-y-3"
+                style={{
+                  background: m.role === 'user' ? 'var(--brand)' : 'var(--surface-2)',
+                  color: m.role === 'user' ? '#fff' : 'var(--text-1)',
+                  border: m.role === 'user' ? 'none' : '1px solid var(--border)',
+                }}
+              >
+                {m.role === 'assistant' && (
+                  <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                    <div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--brand)' }}>
+                      <Bot className="w-3.5 h-3.5" /> AlphaNexus Agent
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="badge badge-brand">{m.message_type === 'fact_grounded' ? 'Fact-Grounded' : 'Synthesis'}</span>
+                      <button onClick={() => copy(m.content, m.id)} style={{ color: 'var(--text-4)' }}>
+                        {copied === m.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="whitespace-pre-wrap leading-relaxed text-xs md:text-sm">{m.content}</div>
+
+                {/* Citations */}
+                {m.citations.length > 0 && (
+                  <div className="pt-3 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
+                    <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>
+                      Sources ({m.citations.length})
+                    </div>
+                    {m.citations.map((c, ci) => (
+                      <div key={ci} className="rounded-lg p-2.5 text-xs space-y-1"
+                        style={{ background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
+                        <div className="flex items-center justify-between font-semibold" style={{ color: 'var(--brand)' }}>
+                          <span>[{ci + 1}] {c.document_title || 'Annual Report'} · Page {c.page_number ?? 'N/A'}</span>
+                          <span className="text-[10px] font-mono" style={{ color: 'var(--text-4)' }}>
+                            {(c.confidence_score * 100).toFixed(0)}% match
+                          </span>
+                        </div>
+                        <p className="italic text-[11px] leading-relaxed" style={{ color: 'var(--text-3)' }}>
+                          "{c.excerpt}"
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="flex items-center gap-2.5 text-xs font-mono animate-pulse" style={{ color: 'var(--brand)' }}>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Searching indexed filings and synthesizing response…
             </div>
           )}
+          <div ref={bottomRef} />
         </div>
 
-        {/* Input Bar */}
-        <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0c1222]">
-          <div className="flex items-center gap-2">
+        {/* Input */}
+        <div className="p-3" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="flex gap-2">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask an equity research question grounded in official corporate filings..."
-              className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder="Ask a research question grounded in official corporate filings…"
+              className="input flex-1 px-4 py-2.5 text-sm"
             />
-            <Button
-              variant="primary"
+            <ANButton
+              variant="brand"
+              size="md"
+              icon={<Send className="w-4 h-4" />}
+              iconRight
               onClick={handleSend}
-              disabled={isLoading || !query.trim()}
-              className="shrink-0"
+              disabled={loading || !query.trim()}
             >
-              <Send className="w-4 h-4 mr-1.5" /> Research
-            </Button>
+              Research
+            </ANButton>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };
-
