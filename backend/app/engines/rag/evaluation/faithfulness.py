@@ -15,3 +15,4 @@ def evaluate_faithfulness(answer: str, context_chunks: List[str]) -> float:
     ctx_words = set(" ".join(context_chunks).lower().split())
     overlap = len(ans_words.intersection(ctx_words))
     return min(1.0, overlap / max(1, len(ans_words) * 0.7))
+

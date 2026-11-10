@@ -25,3 +25,4 @@ def format_table_as_markdown(table_rows: List[List[str]]) -> str:
         body_lines.append("| " + " | ".join(cells[:len(headers)]) + " |")
 
     return f"\n{hdr_line}\n{sep_line}\n" + "\n".join(body_lines) + "\n"
+

@@ -22,3 +22,4 @@ def set_cached_embedding(text: str, embedding: List[float]) -> None:
         _EMBEDDING_CACHE.pop(next(iter(_EMBEDDING_CACHE)))
     key = hashlib.sha256(text.encode("utf-8")).hexdigest()
     _EMBEDDING_CACHE[key] = embedding
+

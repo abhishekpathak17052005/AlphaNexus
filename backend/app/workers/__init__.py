@@ -15,3 +15,4 @@ __all__ = [
     "task_sync_company_news",
     "task_record_audit_event",
 ]
+

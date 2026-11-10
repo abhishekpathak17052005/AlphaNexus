@@ -55,3 +55,4 @@ def task_record_audit_event(
         )
     except Exception as exc:
         logger.warning(f"[BackgroundTask] Audit logging failed: {exc}")
+

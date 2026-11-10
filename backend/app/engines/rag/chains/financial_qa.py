@@ -20,3 +20,4 @@ Use [Source N, Page P] inline bracket citations for every numerical assertion.
 If facts are absent from the context, state clearly what could not be determined.
 """
 )
+

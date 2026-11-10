@@ -33,3 +33,4 @@ class HybridRetriever:
 
 
 hybrid_retriever = HybridRetriever()
+

@@ -7,3 +7,4 @@ Cross-sectional ranking and valuation multiple benchmarking across industry peer
 from app.engines.analytics.peer_analyzer import PeerAnalyzer, peer_analyzer
 
 __all__ = ["PeerAnalyzer", "peer_analyzer"]
+
