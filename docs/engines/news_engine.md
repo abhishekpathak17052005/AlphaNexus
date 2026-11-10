@@ -16,3 +16,4 @@ The News Intelligence Engine pulls corporate news feeds, categorizes material ev
   - Credit Rating Upgrades/Downgrades
   - Regulatory / Legal Inquiries
 - **Lexicon Sentiment Scoring:** Analyzes headline and summary sentiment using a domain-specific financial dictionary, avoiding false positives common in general-purpose NLP libraries.
+

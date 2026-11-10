@@ -11,3 +11,4 @@ ALPHANEXUS integrates with high-reliability external financial and AI providers:
 | **FMP** | Fundamentals and balance sheet history | Configured | `FMP_API_KEY` |
 | **MongoDB Atlas** | Document and Atlas Vector Search database | Connected | `DATABASE_URL` / `MONGODB_URI` |
 | **Supabase** | Relational data & pgvector embeddings | Connected | `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
+

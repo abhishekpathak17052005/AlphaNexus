@@ -13,3 +13,4 @@
 - **Default Model:** `llama-3.3-70b-versatile`
 - **Configuration:** Set `GROQ_API_KEY` in `.env`.
 - When Gemini encounters rate limits (HTTP 429), the LLM adapter seamlessly switches to Groq to guarantee uninterrupted analyst workflows.
+

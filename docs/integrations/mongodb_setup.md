@@ -39,3 +39,4 @@ Create a vector search index on the `document_chunks` collection:
 MONGODB_URI="mongodb+srv://<user>:<password>@cluster0.mongodb.net/?retryWrites=true&w=majority"
 MONGODB_DATABASE="alphanexus"
 ```
+

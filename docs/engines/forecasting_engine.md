@@ -17,3 +17,4 @@ The Forecasting Engine generates forward-looking estimates for revenue, EBITDA, 
 ## 3. Parametric Confidence Intervals
 
 Constructs 80% ($z \approx 1.28$) and 95% ($z \approx 1.96$) parametric bounds that widen realistically across the forecast horizon as compounding uncertainty increases ($\sigma \cdot \sqrt{t}$).
+

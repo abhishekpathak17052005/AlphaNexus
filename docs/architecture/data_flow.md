@@ -34,3 +34,4 @@ sequenceDiagram
     API-->>Frontend: Response with verified page citations
     Frontend-->>Analyst: Render markdown answer + clickable citation pills
 ```
+

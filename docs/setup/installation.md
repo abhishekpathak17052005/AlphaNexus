@@ -42,3 +42,4 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 # Terminal 2: Start Streamlit Frontend
 streamlit run frontend/streamlit_app.py --server.port 8501
 ```
+

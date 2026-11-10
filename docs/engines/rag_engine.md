@@ -30,3 +30,4 @@ The **Financial RAG Engine** is tailored specifically for financial document int
 
 6. **Source Attribution & Citations (`citations/`):**
    - Every generated sentence is mapped back to the origin document chunk, page number, and similarity score.
+

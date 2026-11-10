@@ -31,3 +31,4 @@ Component modules in `frontend/components/`:
 - `cards/`: Metric cards with glassmorphic backdrop filters and colored delta badges.
 - `chat/`: Chat message bubbles with expandable source attribution cards.
 - `charts/`: Reusable Plotly chart constructors.
+

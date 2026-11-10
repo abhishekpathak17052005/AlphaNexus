@@ -11,3 +11,4 @@
 ## 3. Port Collisions
 - FastAPI defaults to port `8000`. If in use, start with `--port 8001` and update `BACKEND_URL` in `.env`.
 - Streamlit defaults to port `8501`. Specify `--server.port 8502` if needed.
+

@@ -77,3 +77,4 @@ flowchart TD
 4. **Persistence Tier:**
    - **PostgreSQL (pgvector):** Structured entities, ticker metadata, user sessions, document metadata, and dense vector embeddings.
    - **MongoDB Atlas:** Raw document unstructured storage and Atlas Vector Search index.
+

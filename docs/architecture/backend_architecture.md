@@ -35,3 +35,4 @@ On startup:
 1. `Base.metadata.create_all()` verifies that database tables exist.
 2. `seed_initial_market_data()` checks if demo tickers are present and populates them if empty.
 3. `engine_registry.initialize_engines()` probes the availability of all external services and initializes embedding models and LLM adapters.
+

@@ -21,3 +21,4 @@ Financial analysis cannot tolerate LLM arithmetic errors. All metrics, growth ra
 
 3. **DuPont Breakdown (3-Way):**
    $$\text{ROE} = \text{Net Profit Margin} \times \text{Asset Turnover} \times \text{Financial Leverage}$$
+

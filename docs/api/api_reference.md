@@ -23,3 +23,4 @@ Base URL: `http://localhost:8000/api/v1`
 
 ## 5. Forecasting
 - `GET /forecasts/{symbol}` – Multi-scenario forecast projections (Base, Bull, Bear).
+

@@ -15,3 +15,4 @@ PYTHONPATH=backend pytest tests/e2e/ -v
 # Run entire test suite
 PYTHONPATH=backend pytest tests/ -v
 ```
+
