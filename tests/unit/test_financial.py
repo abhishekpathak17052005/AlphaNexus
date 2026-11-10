@@ -25,3 +25,4 @@ def test_free_cash_flow():
     capex = 5000000.0
     fcf = calculate_free_cash_flow(operating_cf, capex)
     assert fcf == 20000000.0
+

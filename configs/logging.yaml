@@ -5,3 +5,4 @@ logging:
     - console
     - file
   file_path: "logs/alphanexus.log"
+

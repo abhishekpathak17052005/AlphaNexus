@@ -13,3 +13,4 @@ def test_embedding_generation():
     # Check L2 normalisation
     norm = sum(x**2 for x in vector) ** 0.5
     assert abs(norm - 1.0) < 0.05
+

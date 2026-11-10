@@ -23,3 +23,4 @@ def test_full_equity_research_workflow():
     s = client.get("/api/settings")
     assert s.status_code == 200
     assert "app_name" in s.json()
+

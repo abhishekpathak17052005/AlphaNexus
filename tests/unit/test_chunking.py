@@ -15,3 +15,4 @@ def test_chunker_basic():
     assert len(chunks) > 0
     for c in chunks:
         assert hasattr(c, "text") or isinstance(c, dict)
+

@@ -14,3 +14,4 @@ def test_database_connectivity():
 
 def test_mongodb_instance():
     assert mongodb_manager is not None
+

@@ -6,3 +6,4 @@ embeddings:
   device: "cpu"
   normalize: true
   query_instruction: "Represent this sentence for searching relevant passages: "
+

@@ -4,3 +4,4 @@ chunking:
   chunk_overlap: 150
   table_handling: preserve_markdown
   header_retention: true
+

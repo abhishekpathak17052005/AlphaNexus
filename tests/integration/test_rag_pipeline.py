@@ -11,3 +11,4 @@ def test_rag_pipeline_search():
         top_k=3,
     )
     assert isinstance(results, list)
+

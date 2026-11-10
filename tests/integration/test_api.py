@@ -26,3 +26,4 @@ def test_companies_list_endpoint():
     response = client.get("/api/v1/companies?limit=5")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+

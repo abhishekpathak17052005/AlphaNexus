@@ -7,3 +7,4 @@ This directory stores ingested filings, processed chunk representations, market 
 - `datasets/`: Pre-curated NSE/BSE corporate ticker metadata and financials.
 - `cache/`: Local embedding cache and temporary query cache.
 - `sample_documents/`: Test annual reports and quarterly filings for validation.
+

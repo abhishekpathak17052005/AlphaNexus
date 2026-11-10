@@ -44,3 +44,4 @@ def sample_financial_metrics():
 @pytest.fixture
 def sample_query():
     return "What was the operating profit margin of Reliance Industries in FY24?"
+

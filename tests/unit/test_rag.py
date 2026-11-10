@@ -15,3 +15,4 @@ def test_rag_query_routing():
     from app.engines.rag.query_router import query_router
     route = query_router.route_query("What was the FY24 revenue of TCS?")
     assert route in ["financial", "hybrid", "dense", "general"]
+
