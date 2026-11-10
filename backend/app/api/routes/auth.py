@@ -51,3 +51,4 @@ def get_current_session():
         "app_env": settings.APP_ENV,
         "app_name": settings.APP_NAME,
     }
+

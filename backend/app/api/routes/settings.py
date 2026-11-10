@@ -21,3 +21,4 @@ def get_system_settings() -> Dict[str, Any]:
         "groq_model": settings.GROQ_MODEL,
         "cors_origins": settings.CORS_ORIGINS,
     }
+

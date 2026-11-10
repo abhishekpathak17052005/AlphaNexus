@@ -32,3 +32,4 @@ routes_router.include_router(forecasting.router, tags=["Forecasting"])
 routes_router.include_router(settings.router, prefix="/settings", tags=["Settings"])
 
 __all__ = ["routes_router"]
+

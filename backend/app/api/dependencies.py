@@ -49,3 +49,4 @@ def get_api_key(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return token
+
