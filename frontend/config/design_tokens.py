@@ -19,3 +19,4 @@ GLASS_TOKENS = {
     "border_radius_xl": "24px",
     "transition_smooth": "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
 }
+

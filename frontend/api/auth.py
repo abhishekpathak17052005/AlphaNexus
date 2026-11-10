@@ -22,3 +22,4 @@ def check_auth_status() -> Dict[str, Any]:
         return api_client.get("/auth/me")
     except Exception as e:
         return {"authenticated": False, "error": str(e)}
+

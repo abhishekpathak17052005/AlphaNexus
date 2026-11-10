@@ -22,3 +22,4 @@ def liquid_navigation(items=None, active_item=None, key=None):
     if _component_func:
         return _component_func(items=items or [], active_item=active_item, key=key, default=active_item)
     return active_item
+

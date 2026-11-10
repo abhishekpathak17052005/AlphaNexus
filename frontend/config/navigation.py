@@ -62,3 +62,4 @@ NAV_ITEMS = [
         "description": "Vector store health, chunk inspectors, and retrieval benchmarks",
     },
 ]
+

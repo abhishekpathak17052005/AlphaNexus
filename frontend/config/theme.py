@@ -33,3 +33,4 @@ DARK_THEME = {
 }
 
 CURRENT_THEME = "dark"
+
