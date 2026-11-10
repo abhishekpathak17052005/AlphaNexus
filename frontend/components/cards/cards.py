@@ -28,3 +28,4 @@ def render_metric_card(
         """,
         unsafe_allow_html=True,
     )
+

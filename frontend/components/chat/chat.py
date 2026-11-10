@@ -25,3 +25,4 @@ def render_chat_message(role: str, content: str, citations: Optional[List[Dict[s
                         """,
                         unsafe_allow_html=True,
                     )
+

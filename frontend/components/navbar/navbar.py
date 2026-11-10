@@ -29,3 +29,4 @@ def render_navbar():
         """,
         unsafe_allow_html=True,
     )
+

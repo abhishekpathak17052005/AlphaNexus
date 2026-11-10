@@ -19,3 +19,4 @@ def render_banner(message: str, level: str = "info"):
         st.error(message)
     else:
         st.info(message)
+

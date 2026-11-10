@@ -28,3 +28,4 @@ def render_document_card(doc: Dict[str, Any]):
         """,
         unsafe_allow_html=True,
     )
+
