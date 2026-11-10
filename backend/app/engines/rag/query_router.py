@@ -296,5 +296,20 @@ class QueryRouter:
 
         return list(dict.fromkeys(variants))[:3]  # deduplicate, keep 3
 
+    def route_query(self, query: str) -> str:
+        """
+        Convenience alias returning a simple string route label.
+        Used by unit tests expecting one of: 'financial', 'hybrid', 'dense', 'general'.
+        """
+        result = self.route(query)
+        mapping = {
+            "document_rag": "dense",
+            "structured_analytics": "financial",
+            "hybrid": "hybrid",
+            "news_events": "dense",
+            "market_data": "financial",
+        }
+        return mapping.get(result.route.value, "general")
+
 
 query_router = QueryRouter()

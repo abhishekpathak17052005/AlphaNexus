@@ -706,3 +706,20 @@ class FinancialDocumentChunker:
 # Backwards-compatible alias so existing code doesn't break
 # ---------------------------------------------------------------------------
 DocumentChunker = FinancialDocumentChunker
+
+    # Convenience method for plain-text chunking (used by unit tests)
+def _add_chunk_text_method():
+    def chunk_text(self, text: str, document_id: str = "test", company_id: str = "test") -> List[Dict[str, Any]]:
+        """
+        Convenience method: chunk a raw text string without page structure.
+        Returns the same dict format as chunk_document().
+        """
+        pages = [{"page_number": 1, "text": text, "tables": []}]
+        return self.chunk_document(
+            pages_data=pages,
+            company_id=company_id,
+            document_id=document_id,
+        )
+    FinancialDocumentChunker.chunk_text = chunk_text
+
+_add_chunk_text_method()
