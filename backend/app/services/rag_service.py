@@ -51,3 +51,4 @@ class RAGAppService:
 
 
 rag_app_service = RAGAppService()
+

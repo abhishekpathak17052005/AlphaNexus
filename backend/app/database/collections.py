@@ -10,3 +10,4 @@ COLLECTION_CONVERSATIONS = "rag_conversations"
 COLLECTION_CITATIONS = "rag_citations"
 COLLECTION_CONFIGURATIONS = "rag_configurations"
 COLLECTION_EVALUATIONS = "rag_evaluations"
+

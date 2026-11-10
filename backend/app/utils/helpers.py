@@ -21,3 +21,4 @@ def ensure_uuid(val: Any) -> uuid.UUID:
     if isinstance(val, uuid.UUID):
         return val
     return uuid.UUID(str(val))
+

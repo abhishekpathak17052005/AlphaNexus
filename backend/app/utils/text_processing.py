@@ -22,3 +22,4 @@ def extract_numerical_tokens(text: str) -> list[str]:
     """Finds currency figures, percentages, and numerical quantities in text."""
     pattern = r"(?:₹|\$|Rs\.?|INR)?\s*[-+]?\d{1,3}(?:,\d{2,3})*(?:\.\d+)?\s*(?:Cr|Crore|Lakh|M|B|%|bps)?"
     return [m.group(0).strip() for m in re.finditer(pattern, text) if any(c.isdigit() for c in m.group(0))]
+

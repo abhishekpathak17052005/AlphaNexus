@@ -32,3 +32,4 @@ class ForecastingAppService:
 
 
 forecasting_app_service = ForecastingAppService()
+

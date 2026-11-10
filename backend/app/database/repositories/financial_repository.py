@@ -34,3 +34,4 @@ class FinancialRepository:
 
 
 financial_repository = FinancialRepository()
+

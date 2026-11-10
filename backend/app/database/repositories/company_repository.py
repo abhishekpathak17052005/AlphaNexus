@@ -42,3 +42,4 @@ class CompanyRepository:
 
 
 company_repository = CompanyRepository()
+

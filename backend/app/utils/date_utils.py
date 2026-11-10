@@ -28,3 +28,4 @@ def parse_reporting_period(period_str: str) -> Tuple[Optional[str], Optional[str
         elif p in ["Q1", "Q2", "Q3", "Q4"]:
             quarter = p
     return fy, quarter
+

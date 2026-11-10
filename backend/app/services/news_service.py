@@ -26,3 +26,4 @@ class NewsAppService:
 
 
 news_app_service = NewsAppService()
+

@@ -28,3 +28,4 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
             duration_ms = (time.monotonic() - start_time) * 1000
             logger.error(f"[Middleware] Unhandled exception on {request.method} {request.url.path}: {exc} (took {duration_ms:.2f}ms)")
             raise
+

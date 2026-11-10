@@ -21,3 +21,4 @@ def validate_uploaded_file(filename: str, file_size: int) -> Tuple[bool, str]:
         return False, f"File size exceeds maximum allowed limit of {max_mb}MB."
 
     return True, "Valid"
+

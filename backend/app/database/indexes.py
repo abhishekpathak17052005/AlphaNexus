@@ -50,3 +50,4 @@ def ensure_all_indexes(db: Database) -> Dict[str, Any]:
         report["error"] = str(exc)
 
     return report
+

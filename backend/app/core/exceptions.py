@@ -39,3 +39,4 @@ class ExternalAPIError(AlphaNexusException):
 class QuantitativeCalculationError(AlphaNexusException):
     """Raised when financial ratio or econometric forecast computation encounters illegal mathematical state."""
     pass
+
