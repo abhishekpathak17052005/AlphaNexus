@@ -1,388 +1,254 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
-  UploadCloud,
-  FileText,
-  FileSpreadsheet,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Trash2,
-  Eye,
-  RefreshCw,
-  Plus,
-  FileCode,
+  Upload, FileText, Trash2, RefreshCw, CheckCircle2,
+  XCircle, Loader2, CloudUpload, Building2, AlertCircle,
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { Modal } from '../components/ui/Modal';
+import { ANButton } from '../components/shared/ANButton';
 import { api } from '../services/api';
-import { DocumentItem, Company } from '../types';
+import type { Company, DocumentItem } from '../types';
+
+const DOC_TYPES = [
+  'Annual Report', 'Quarterly Result', 'Investor Presentation',
+  'Earnings Call Transcript', 'Corporate Announcement', 'Financial Statement',
+  'Research Report', 'Other',
+];
+
+const FY_OPTIONS = ['FY25', 'FY24', 'FY23', 'FY22', 'FY21', 'FY20'];
+
+const StatusBadge: React.FC<{ status: DocumentItem['status'] }> = ({ status }) => {
+  const map: Record<DocumentItem['status'], { label: string; color: string; icon: React.ReactNode }> = {
+    UPLOADED:   { label: 'Uploaded',   color: 'badge-muted',  icon: <FileText className="w-3 h-3" /> },
+    QUEUED:     { label: 'Queued',     color: 'badge-brand',  icon: <Loader2  className="w-3 h-3 animate-spin" /> },
+    PROCESSING: { label: 'Processing', color: 'badge-brand',  icon: <Loader2  className="w-3 h-3 animate-spin" /> },
+    PROCESSED:  { label: 'Indexed',    color: 'badge-lime',   icon: <CheckCircle2 className="w-3 h-3" /> },
+    FAILED:     { label: 'Failed',     color: 'badge-neg',    icon: <XCircle  className="w-3 h-3" /> },
+  };
+  const { label, color, icon } = map[status] ?? map.UPLOADED;
+  return <span className={`badge ${color} gap-1`}>{icon}{label}</span>;
+};
 
 export const DocumentIntelligencePage: React.FC = () => {
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  const [docTitle, setDocTitle] = useState('');
-  const [financialYear, setFinancialYear] = useState('FY24');
-  const [documentType, setDocumentType] = useState('Annual Report');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [documents,  setDocuments]  = useState<DocumentItem[]>([]);
+  const [companies,  setCompanies]  = useState<Company[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [uploading,  setUploading]  = useState(false);
+  const [dragOver,   setDragOver]   = useState(false);
+  const [companyId,  setCompanyId]  = useState('');
+  const [docType,    setDocType]    = useState(DOC_TYPES[0]);
+  const [fy,         setFy]         = useState(FY_OPTIONS[0]);
+  const [title,      setTitle]      = useState('');
+  const [uploadMsg,  setUploadMsg]  = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const loadData = async () => {
+  const load = async () => {
+    setLoading(true);
     try {
       const [docs, comps] = await Promise.all([api.getDocuments(), api.getCompanies()]);
       setDocuments(docs);
       setCompanies(comps);
-      if (comps.length > 0 && !selectedCompanyId) {
-        setSelectedCompanyId(comps[0].id);
-      }
-    } catch (e) {
-      console.error('Error loading documents:', e);
-    }
+      if (!companyId && comps.length) setCompanyId(comps[0].id);
+    } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setSelectedFile(file);
-      if (!docTitle) setDocTitle(file.name.replace(/\.[^/.]+$/, ''));
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      if (!docTitle) setDocTitle(file.name.replace(/\.[^/.]+$/, ''));
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile || !selectedCompanyId || !docTitle.trim()) {
-      alert('Please fill in title, select company, and choose a file.');
+  const handleFile = async (file: File) => {
+    if (!companyId || !title.trim()) {
+      setUploadMsg('Please select a company and enter a document title.');
       return;
     }
-
-    setIsUploading(true);
+    setUploading(true); setUploadMsg('');
     const formData = new FormData();
-    formData.append('company_id', selectedCompanyId);
-    formData.append('title', docTitle.trim());
-    formData.append('financial_year', financialYear);
-    formData.append('document_type', documentType);
-    formData.append('file', selectedFile);
+    formData.append('company_id', companyId);
+    formData.append('title',       title);
+    formData.append('financial_year', fy);
+    formData.append('document_type',  docType);
+    formData.append('file', file);
     formData.append('auto_process', 'true');
-
     try {
-      await api.uploadDocument(formData);
-      setSelectedFile(null);
-      setDocTitle('');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      await loadData();
+      const res = await api.uploadDocument(formData);
+      setUploadMsg(`✓ ${res.message}`);
+      setTitle('');
+      load();
     } catch (e: any) {
-      alert(`Upload error: ${e.response?.data?.detail || e.message}`);
-    } finally {
-      setIsUploading(false);
-    }
+      setUploadMsg(`Error: ${e?.response?.data?.detail || e.message}`);
+    } finally { setUploading(false); }
   };
 
-  const handleReprocess = async (docId: string) => {
-    try {
-      await api.processDocument(docId);
-      await loadData();
-    } catch (e: any) {
-      alert(`Processing error: ${e.message}`);
-    }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
   };
 
-  const handleDelete = async (docId: string) => {
-    if (!confirm('Are you sure you want to delete this document and its vector embeddings?')) return;
-    try {
-      await api.deleteDocument(docId);
-      await loadData();
-    } catch (e: any) {
-      alert(`Delete error: ${e.message}`);
-    }
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this document and all its indexed chunks?')) return;
+    await api.deleteDocument(id);
+    setDocuments((prev) => prev.filter((d) => d.id !== id));
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'PROCESSED':
-        return (
-          <Badge variant="gain" size="xs">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> PROCESSED
-          </Badge>
-        );
-      case 'PROCESSING':
-        return (
-          <Badge variant="brand" size="xs">
-            <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> PROCESSING
-          </Badge>
-        );
-      case 'QUEUED':
-      case 'UPLOADED':
-        return (
-          <Badge variant="neutral" size="xs">
-            <Clock className="w-3 h-3 mr-1" /> QUEUED
-          </Badge>
-        );
-      case 'FAILED':
-        return (
-          <Badge variant="loss" size="xs">
-            <AlertCircle className="w-3 h-3 mr-1" /> FAILED
-          </Badge>
-        );
-      default:
-        return <Badge size="xs">{status}</Badge>;
-    }
+  const handleReprocess = async (id: string) => {
+    await api.processDocument(id);
+    load();
   };
-
-  const totalPages = documents.reduce((sum, d) => sum + (d.total_pages || 0), 0);
-  const totalChunks = documents.reduce((sum, d) => sum + (d.total_chunks || 0), 0);
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Document Intelligence Engine
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Ingest Annual Reports, Earnings Transcripts, and Financial Statements into pgvector
-          </p>
-        </div>
-      </div>
+    <div className="page-container py-8 space-y-7">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-1)', letterSpacing: '-0.02em' }}>
+          Document <span style={{ color: 'var(--brand)' }}>Intelligence</span>
+        </h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-3)' }}>
+          Upload financial filings. AlphaNexus extracts, chunks, embeds and indexes them for instant AI research.
+        </p>
+      </motion.div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-tabular">
-        <Card className="p-4">
-          <span className="text-xs text-slate-400 font-mono block">Total Filings Stored</span>
-          <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">{documents.length}</span>
-        </Card>
-        <Card className="p-4">
-          <span className="text-xs text-slate-400 font-mono block">Pages Parsed</span>
-          <span className="text-2xl font-bold text-cyan-500">{totalPages}</span>
-        </Card>
-        <Card className="p-4">
-          <span className="text-xs text-slate-400 font-mono block">Vector Embeddings (384-d)</span>
-          <span className="text-2xl font-bold text-emerald-500">{totalChunks}</span>
-        </Card>
-      </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Upload Panel */}
+        <div className="card p-5 space-y-4">
+          <h3 className="font-bold text-sm" style={{ color: 'var(--text-1)' }}>Upload Document</h3>
 
-      {/* Upload Zone */}
-      <Card className="p-6">
-        <CardTitle className="mb-4">Upload New Financial Document</CardTitle>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {/* Company Picker */}
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Select Company *
-            </label>
-            <select
-              value={selectedCompanyId}
-              onChange={(e) => setSelectedCompanyId(e.target.value)}
-              className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs px-3 py-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.symbol} - {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Financial Year */}
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Financial Year
-            </label>
-            <select
-              value={financialYear}
-              onChange={(e) => setFinancialYear(e.target.value)}
-              className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs px-3 py-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 font-mono"
-            >
-              <option value="FY25">FY25</option>
-              <option value="FY24">FY24</option>
-              <option value="FY23">FY23</option>
-              <option value="FY22">FY22</option>
-              <option value="FY21">FY21</option>
-            </select>
-          </div>
-
-          {/* Doc Type */}
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Document Classification
-            </label>
-            <select
-              value={documentType}
-              onChange={(e) => setDocumentType(e.target.value)}
-              className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs px-3 py-2 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            >
-              <option value="Annual Report">Annual Report</option>
-              <option value="Quarterly Results">Quarterly Results / Earnings</option>
-              <option value="Earnings Call Transcript">Earnings Call Transcript</option>
-              <option value="Investor Presentation">Investor Presentation</option>
-              <option value="Credit Rating Note">Credit Rating Note</option>
-              <option value="Board Meeting Disclosure">Board Meeting Disclosure</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Document Title */}
-        <div className="mb-4">
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Document Title *
-          </label>
-          <input
-            value={docTitle}
-            onChange={(e) => setDocTitle(e.target.value)}
-            placeholder="e.g., Reliance Industries Integrated Annual Report FY24"
-            className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs sm:text-sm px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-          />
-        </div>
-
-        {/* Drag and Drop Zone */}
-        <div
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={handleFileDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-cyan-500 rounded-xl p-8 text-center cursor-pointer transition-colors bg-slate-50/50 dark:bg-slate-900/30"
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.docx,.doc,.xlsx,.xls,.csv"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <UploadCloud className="w-10 h-10 text-cyan-500 mx-auto mb-2 opacity-80" />
-          {selectedFile ? (
-            <div className="text-xs">
-              <span className="font-semibold text-slate-900 dark:text-slate-100 block">{selectedFile.name}</span>
-              <span className="text-slate-400 font-mono">
-                {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to Upload & Ingest
-              </span>
-            </div>
-          ) : (
+          <div className="space-y-3">
             <div>
-              <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
-                Click to browse or drag and drop financial filings
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Supports PDF (text & financial tables), DOCX, XLSX, and CSV (Up to 100MB)
-              </p>
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>Company</label>
+              <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="input w-full px-3 py-2 text-sm mt-1">
+                <option value="">Select company…</option>
+                {companies.map((c) => <option key={c.id} value={c.id}>{c.symbol} — {c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>Title</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Document title…"
+                className="input w-full px-3 py-2 text-sm mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>Type</label>
+                <select value={docType} onChange={(e) => setDocType(e.target.value)} className="input w-full px-2 py-1.5 text-xs mt-1">
+                  {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>FY</label>
+                <select value={fy} onChange={(e) => setFy(e.target.value)} className="input w-full px-2 py-1.5 text-xs mt-1">
+                  {FY_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Drop Zone */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileRef.current?.click()}
+            className="rounded-xl flex flex-col items-center justify-center gap-3 p-6 cursor-pointer transition-all"
+            style={{
+              border: `2px dashed ${dragOver ? 'var(--brand)' : 'var(--border-strong)'}`,
+              background: dragOver ? 'var(--brand-muted)' : 'var(--surface-2)',
+            }}
+          >
+            <CloudUpload className="w-7 h-7" style={{ color: dragOver ? 'var(--brand)' : 'var(--text-4)' }} />
+            <div className="text-xs text-center" style={{ color: 'var(--text-3)' }}>
+              <span className="font-semibold" style={{ color: 'var(--brand)' }}>Click or drag</span> to upload<br />
+              PDF · DOCX · XLSX · CSV · Max 50 MB
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.docx,.doc,.xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            />
+          </div>
+
+          {uploading && (
+            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--brand)' }}>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Uploading and processing…
+            </div>
+          )}
+          {uploadMsg && (
+            <div
+              className="text-xs rounded-lg p-3"
+              style={{
+                background: uploadMsg.startsWith('✓') ? 'var(--lime-muted)' : 'rgba(255,100,110,.08)',
+                color: uploadMsg.startsWith('✓') ? 'var(--positive-text)' : 'var(--negative-text)',
+                border: `1px solid ${uploadMsg.startsWith('✓') ? 'rgba(212,255,36,.2)' : 'rgba(255,100,110,.2)'}`,
+              }}
+            >
+              {uploadMsg}
             </div>
           )}
         </div>
 
-        <div className="mt-4 flex justify-end">
-          <Button
-            variant="primary"
-            onClick={handleUpload}
-            isLoading={isUploading}
-            disabled={!selectedFile || isUploading}
-          >
-            Upload & Vectorize Filing
-          </Button>
-        </div>
-      </Card>
-
-      {/* Uploaded Documents Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Ingested Filings & Vector Status</CardTitle>
-          <Button variant="ghost" size="xs" onClick={loadData}>
-            <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
-          </Button>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-left text-xs font-tabular">
-            <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-mono">
-              <tr>
-                <th className="p-3">Title / Filename</th>
-                <th className="p-3">FY</th>
-                <th className="p-3">Category</th>
-                <th className="p-3">Status</th>
-                <th className="p-3 text-right">Pages</th>
-                <th className="p-3 text-right">Vectors</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-850/50">
-                  <td className="p-3">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 font-sans">{doc.title}</div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate max-w-xs">{doc.filename}</div>
-                  </td>
-                  <td className="p-3 font-mono text-cyan-500 font-semibold">{doc.financial_year || 'FY24'}</td>
-                  <td className="p-3 text-slate-600 dark:text-slate-300 font-sans">{doc.document_type}</td>
-                  <td className="p-3">{getStatusBadge(doc.status)}</td>
-                  <td className="p-3 text-right text-slate-700 dark:text-slate-300">{doc.total_pages}</td>
-                  <td className="p-3 text-right text-emerald-500 font-semibold">{doc.total_chunks}</td>
-                  <td className="p-3 text-right space-x-2">
-                    <button
-                      onClick={() => setPreviewDoc(doc)}
-                      className="p-1 text-slate-400 hover:text-cyan-500"
-                      title="Preview metadata"
-                    >
-                      <Eye className="w-4 h-4 inline" />
-                    </button>
-                    <button
-                      onClick={() => handleReprocess(doc.id)}
-                      className="p-1 text-slate-400 hover:text-amber-500"
-                      title="Reprocess chunks & embeddings"
-                    >
-                      <RefreshCw className="w-4 h-4 inline" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(doc.id)}
-                      className="p-1 text-slate-400 hover:text-rose-500"
-                      title="Delete filing"
-                    >
-                      <Trash2 className="w-4 h-4 inline" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-
-      {/* Preview Modal */}
-      <Modal
-        isOpen={!!previewDoc}
-        onClose={() => setPreviewDoc(null)}
-        title={previewDoc?.title || 'Filing Details'}
-      >
-        {previewDoc && (
-          <div className="space-y-4 text-xs font-mono">
-            <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-900 space-y-1.5">
-              <div><span className="text-slate-400">Document ID:</span> {previewDoc.id}</div>
-              <div><span className="text-slate-400">Filename:</span> {previewDoc.filename}</div>
-              <div><span className="text-slate-400">Type:</span> {previewDoc.document_type}</div>
-              <div><span className="text-slate-400">Financial Year:</span> {previewDoc.financial_year}</div>
-              <div><span className="text-slate-400">Status:</span> {previewDoc.status}</div>
-              <div><span className="text-slate-400">Pages:</span> {previewDoc.total_pages}</div>
-              <div><span className="text-slate-400">Indexed Chunks:</span> {previewDoc.total_chunks}</div>
-            </div>
-            <p className="text-slate-500 font-sans text-xs">
-              This filing is indexed with 384-dimensional dense vector embeddings using SentenceTransformers (BAAI/bge-small-en-v1.5) for semantic query retrieval.
-            </p>
+        {/* Document List */}
+        <div className="lg:col-span-2 card overflow-hidden">
+          <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border)' }}>
+            <h3 className="font-bold text-sm" style={{ color: 'var(--text-1)' }}>
+              Indexed Documents <span style={{ color: 'var(--text-4)' }}>({documents.length})</span>
+            </h3>
+            <ANButton variant="ghost" size="xs" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={load}>
+              Refresh
+            </ANButton>
           </div>
-        )}
-      </Modal>
+
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="p-6 space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="skeleton h-10 rounded-lg w-full" />
+                ))}
+              </div>
+            ) : documents.length === 0 ? (
+              <div className="py-16 text-center" style={{ color: 'var(--text-4)' }}>
+                <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <div className="text-sm font-medium">No documents uploaded yet.</div>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead style={{ background: 'var(--surface-2)' }}>
+                  <tr className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-4)' }}>
+                    {['Document', 'Type', 'FY', 'Pages', 'Chunks', 'Status', ''].map((h) => (
+                      <th key={h} className="px-4 py-2.5 font-bold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {documents.map((doc) => (
+                    <tr key={doc.id} style={{ borderTop: '1px solid var(--border)' }}
+                      className="transition-colors hover:bg-[var(--surface-2)]">
+                      <td className="px-4 py-3 max-w-[160px]">
+                        <div className="font-semibold truncate" style={{ color: 'var(--text-1)' }}>{doc.title}</div>
+                        <div className="text-[10px] truncate" style={{ color: 'var(--text-4)' }}>{doc.filename}</div>
+                      </td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-3)' }}>{doc.document_type}</td>
+                      <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-3)' }}>{doc.financial_year || '—'}</td>
+                      <td className="px-4 py-3 font-tabular" style={{ color: 'var(--text-3)' }}>{doc.total_pages}</td>
+                      <td className="px-4 py-3 font-tabular" style={{ color: 'var(--lime)' }}>{doc.total_chunks}</td>
+                      <td className="px-4 py-3"><StatusBadge status={doc.status} /></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => handleReprocess(doc.id)} title="Reprocess"
+                            className="p-1 rounded hover:opacity-80" style={{ color: 'var(--brand)' }}>
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDelete(doc.id)} title="Delete"
+                            className="p-1 rounded hover:opacity-80" style={{ color: 'var(--negative-text)' }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
-

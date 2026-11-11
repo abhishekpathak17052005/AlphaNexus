@@ -1,42 +1,38 @@
 import { create } from 'zustand';
 
+type Theme = 'dark' | 'light';
+
 interface ThemeState {
-  theme: 'dark' | 'light';
+  theme: Theme;
   toggleTheme: () => void;
-  setTheme: (theme: 'dark' | 'light') => void;
+  setTheme: (theme: Theme) => void;
 }
 
-export const useThemeStore = create<ThemeState>((set) => {
-  const initialTheme = (localStorage.getItem('equilens-theme') as 'dark' | 'light') || 'dark';
-  
-  if (initialTheme === 'dark') {
+function applyTheme(theme: Theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  // Keep the .dark class for Tailwind dark: utilities
+  if (theme === 'dark') {
     document.documentElement.classList.add('dark');
   } else {
     document.documentElement.classList.remove('dark');
   }
+}
 
-  return {
-    theme: initialTheme,
-    toggleTheme: () =>
-      set((state) => {
-        const next = state.theme === 'dark' ? 'light' : 'dark';
-        localStorage.setItem('equilens-theme', next);
-        if (next === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-        return { theme: next };
-      }),
-    setTheme: (theme) => {
-      localStorage.setItem('equilens-theme', theme);
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      set({ theme });
-    },
-  };
-});
+const stored = (localStorage.getItem('alphanexus-theme') as Theme) || 'dark';
+applyTheme(stored);
 
+export const useThemeStore = create<ThemeState>((set) => ({
+  theme: stored,
+  toggleTheme: () =>
+    set((state) => {
+      const next: Theme = state.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('alphanexus-theme', next);
+      applyTheme(next);
+      return { theme: next };
+    }),
+  setTheme: (theme: Theme) => {
+    localStorage.setItem('alphanexus-theme', theme);
+    applyTheme(theme);
+    set({ theme });
+  },
+}));

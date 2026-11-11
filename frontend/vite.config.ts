@@ -27,9 +27,10 @@ export default defineConfig({
       output: {
         // Code-split vendor chunks to avoid >500 kB bundle warning
         manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-query': ['@tanstack/react-query'],
-          'vendor-charts': ['recharts'],
+          'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query':  ['@tanstack/react-query'],
+          'vendor-motion': ['motion'],
+          'vendor-charts': ['recharts', 'lightweight-charts'],
           'vendor-ui': [
             '@radix-ui/react-dialog',
             '@radix-ui/react-dropdown-menu',

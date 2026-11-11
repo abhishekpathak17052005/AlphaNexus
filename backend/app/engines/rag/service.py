@@ -93,6 +93,9 @@ class RAGService:
         self.chunker = FinancialDocumentChunker()
         self.gemini = GeminiProvider()
         self.groq = GroqProvider()
+        # Expose module-level singletons as instance attributes for testability
+        self.embedding_engine = embedding_engine
+        self.vector_store = vector_store
 
     # ==================================================================
     # INGESTION PIPELINE

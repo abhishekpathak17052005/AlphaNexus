@@ -1,51 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
-import { Navbar } from './Navbar';
-import { GlobalSearchModal } from './GlobalSearchModal';
+import { motion } from 'motion/react';
+import { LiquidNavbar } from '../navigation/LiquidNavbar';
+import { GlobalSearch } from '../shared/GlobalSearch';
 
 export const AppLayout: React.FC = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
+  // ⌘K / Ctrl+K shortcut
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsSearchOpen(true);
+        setSearchOpen(true);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
-      {/* Sidebar */}
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed((prev) => !prev)}
-      />
+    <div
+      className="min-h-screen w-full max-w-full overflow-x-hidden"
+      style={{ background: 'var(--bg)', color: 'var(--text-1)' }}
+    >
+      <LiquidNavbar onSearchOpen={() => setSearchOpen(true)} />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-        <Navbar
-          onOpenSearch={() => setIsSearchOpen(true)}
-          isSidebarCollapsed={isSidebarCollapsed}
-          onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
-        />
+      <motion.main
+        key="main"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        className="pb-16 w-full max-w-full overflow-x-hidden"
+      >
+        <Outlet />
+      </motion.main>
 
-        <main className="flex-1 overflow-y-auto bg-slate-100/60 dark:bg-[#050811] p-4 sm:p-6 lg:p-8">
-          <Outlet />
-        </main>
-      </div>
-
-      {/* Global Search Modal */}
-      <GlobalSearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-      />
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 };
-
